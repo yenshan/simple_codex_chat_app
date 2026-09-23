@@ -2,12 +2,12 @@
 <html lang="ja">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Codex Chat</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/vendor/katex.min.css"><script type="module" src="/app.js"></script></head>
 <body>
-  <header><a class="brand" href="/" aria-label="Codex Chat ホーム"><span class="logo">c<span>›</span></span>Codex <span class="light">Chat</span></a></header>
-  <button id="history-toggle" class="secondary" aria-expanded="false" aria-controls="sidebar">☰ 設定・チャット履歴</button>
-  <div class="workspace"><aside id="sidebar" aria-label="設定とチャット履歴">
+  <div class="workspace sidebar-open"><aside id="sidebar" aria-label="設定とチャット履歴">
+    <div class="sidebar-head"><a class="brand" href="/" aria-label="Codex Chat ホーム"><span class="logo">c<span>›</span></span>Codex <span class="light">Chat</span></a></div>
     <div class="toolbar"><span id="connection" role="status">● 接続中</span><div class="model-settings"><label for="model">モデル <select id="model" disabled><option>読み込み中…</option></select></label><label for="effort">推論レベル <select id="effort" disabled><option>読み込み中…</option></select></label></div></div>
     <button id="new-chat" class="secondary">＋ 新しい会話</button>
-    <div class="sidebar-heading">チャット履歴</div><nav id="history-list" aria-label="保存した会話"></nav><p class="history-note">会話はこの端末に保存されます</p></aside><main>
+    <div class="sidebar-heading">チャット履歴</div><nav id="history-list" aria-label="保存した会話"></nav><p class="history-note">会話はこの端末に保存されます</p></aside>
+    <button id="sidebar-toggle" type="button" aria-label="サイドバーを閉じる" aria-expanded="true" aria-controls="sidebar">×</button><main>
     <section id="conversation" aria-label="会話">
       <div id="welcome"><div class="eyebrow">A LITTLE SPACE FOR BIG IDEAS</div><h1>今日は、何を話しましょう。</h1><p>疑問を解いたり、アイデアを広げたり。<br>好きなモデルで、気軽に話しかけてください。</p><div class="suggestions"><button data-prompt="新しいWebアプリのアイデアを一緒に考えてください。"><span>✦</span> アイデアを考える <b>↗</b></button><button data-prompt="わかりやすい文章を書くためのコツを教えてください。"><span>≋</span> 文章を磨く <b>↗</b></button><button data-prompt="プログラミングの学習計画を一緒に考えてください。"><span>⌘</span> コードを学ぶ <b>↗</b></button></div></div>
       <div id="messages" role="log" aria-label="チャットメッセージ" aria-live="polite"></div>

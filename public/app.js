@@ -3,6 +3,14 @@ import DOMPurify from '/vendor/purify.js';
 import katex from '/vendor/katex.mjs';
 import { renderMarkdown } from './markdown.js';
 const $ = selector => document.querySelector(selector);
+function setSidebarOpen(open) {
+  if (!open && $('#sidebar').contains(document.activeElement)) $('#sidebar-toggle').focus();
+  $('.workspace').classList.toggle('sidebar-open', open);
+  $('#sidebar-toggle').setAttribute('aria-expanded', String(open));
+  $('#sidebar-toggle').setAttribute('aria-label', open ? 'サイドバーを閉じる' : 'サイドバーを開く');
+  $('#sidebar-toggle').textContent = open ? '×' : '☰';
+}
+setSidebarOpen(!document.defaultView.matchMedia?.('(max-width: 600px)').matches);
 function renderText(content, text, role = 'assistant') {
   content.dataset.raw = text;
   if (role === 'user') content.textContent = text;
@@ -67,7 +75,7 @@ async function openConversation(id) {
     if (models.some(m => m.model === data.model)) { model.value = data.model; updateEffort(); }
     if ([...effort.options].some(o => o.value === data.effort)) effort.value = data.effort;
     prompt.value = ''; $('#activity').textContent = ''; error(); scroll();
-    $('#sidebar').classList.remove('open'); $('#history-toggle').setAttribute('aria-expanded', 'false');
+    if (document.defaultView.matchMedia?.('(max-width: 600px)').matches) setSidebarOpen(false);
   } finally { switching = false; controls(); }
 }
 function error(message = '') { $('#error').textContent = message; $('#error').hidden = !message; }
@@ -151,7 +159,7 @@ prompt.addEventListener('input', controls);
 prompt.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); $('#composer').requestSubmit(); } });
 stop.onclick = async () => { stop.disabled = true; try { await api('/api/stop', {}); } catch (e) { error(e.message); stop.disabled = false; } };
 $('#new-chat').onclick = () => reset().catch(e => error(e.message));
-$('#history-toggle').onclick = () => { const open = $('#sidebar').classList.toggle('open'); $('#history-toggle').setAttribute('aria-expanded', String(open)); };
+$('#sidebar-toggle').onclick = () => setSidebarOpen(!$('.workspace').classList.contains('sidebar-open'));
 document.querySelectorAll('[data-prompt]').forEach(button => button.onclick = () => { prompt.value = button.dataset.prompt; controls(); prompt.focus(); });
 model.onchange = () => { try { localStorage.setItem('codex-chat-model', model.value); } catch {} updateEffort(); };
 effort.onchange = () => { try { localStorage.setItem(`codex-chat-effort:${model.value}`, effort.value); } catch {} };

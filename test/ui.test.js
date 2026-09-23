@@ -32,6 +32,18 @@ test('restores history, renders streamed Markdown and switches to a new conversa
   const run = new (Object.getPrototypeOf(async function() {}).constructor)('document', 'localStorage', 'navigator', 'Option', 'fetch', 'Marked', 'DOMPurify', 'katex', 'renderMarkdown', source);
   await run(window.document, window.localStorage, window.navigator, window.Option, fetch, Marked, createDOMPurify(window), katex, renderMarkdown);
   const $ = selector => window.document.querySelector(selector);
+  assert.ok($('#sidebar .brand'));
+  assert.equal(window.document.querySelector('header .brand'), null);
+  assert.equal($('main').firstElementChild.id, 'conversation');
+  assert.equal($('#sidebar-toggle').getAttribute('aria-expanded'), 'true');
+  assert.equal($('#sidebar-toggle').textContent, '×');
+  assert.equal(window.document.querySelectorAll('#sidebar-toggle, #sidebar-close').length, 1);
+  $('#sidebar-toggle').click();
+  assert.equal($('.workspace').classList.contains('sidebar-open'), false);
+  assert.equal($('#sidebar-toggle').getAttribute('aria-label'), 'サイドバーを開く');
+  assert.equal($('#sidebar-toggle').textContent, '☰');
+  $('#sidebar-toggle').click();
+  assert.equal($('.workspace').classList.contains('sidebar-open'), true);
   assert.equal($('#messages h1').textContent, '保存された見出し');
   assert.ok($('#messages .katex'));
   assert.equal($('.history-item').getAttribute('aria-current'), 'page');
@@ -47,5 +59,7 @@ test('restores history, renders streamed Markdown and switches to a new conversa
   assert.equal($('.history-item span').textContent, '以前の会話');
   await $('.history-item').onclick();
   assert.equal($('#messages h1').textContent, '保存された見出し');
+  $('#sidebar-toggle').click();
+  assert.equal($('.workspace').classList.contains('sidebar-open'), false);
   dom.window.close();
 });
