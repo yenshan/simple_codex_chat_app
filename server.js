@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { Codex } from './codex.js';
 import { History } from './history.js';
 
-export function createChatServer(codex, { historyPath } = {}) {
+export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {}) {
   const history = new History(historyPath);
   const sessions = history.sessions;
   let models = [];
@@ -15,22 +15,18 @@ export function createChatServer(codex, { historyPath } = {}) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'");
     const host = req.headers.host;
-    if (!host || !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) || (req.headers.origin && req.headers.origin !== `http://${host}`)) return json(res, 403, { error: 'Forbidden origin' });
+    if (!host || !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) || (req.headers.origin && req.headers.origin !== `http://${host}` && !allowedOrigins.includes(req.headers.origin))) return json(res, 403, { error: 'Forbidden origin' });
     try {
       const path = new URL(req.url, `http://${host}`).pathname;
-      const vendors = { '/vendor/marked.js': './node_modules/marked/lib/marked.esm.js', '/vendor/purify.js': './node_modules/dompurify/dist/purify.es.mjs', '/vendor/katex.mjs': './node_modules/katex/dist/katex.mjs', '/vendor/katex.min.css': './node_modules/katex/dist/katex.min.css' };
-      if (req.method === 'GET' && vendors[path]) {
-        res.setHeader('Content-Type', path.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
-        return res.end(await readFile(new URL(vendors[path], import.meta.url)));
-      }
-      if (req.method === 'GET' && /^\/vendor\/fonts\/KaTeX_[\w-]+\.woff2$/.test(path)) {
-        res.setHeader('Content-Type', 'font/woff2');
-        return res.end(await readFile(new URL(`./node_modules/katex/dist/fonts/${path.split('/').at(-1)}`, import.meta.url)));
-      }
-      if (req.method === 'GET' && ['/', '/app.js', '/markdown.js', '/style.css'].includes(path)) {
+      if (req.method === 'GET' && (path === '/' || path === '/index.html' || /^\/assets\/[\w.-]+$/.test(path))) {
         const file = path === '/' ? 'index.html' : path.slice(1);
-        res.setHeader('Content-Type', { 'index.html': 'text/html; charset=utf-8', 'app.js': 'text/javascript; charset=utf-8', 'markdown.js': 'text/javascript; charset=utf-8', 'style.css': 'text/css; charset=utf-8' }[file]);
-        return res.end(await readFile(new URL(`./public/${file}`, import.meta.url)));
+        const extension = file.split('.').at(-1);
+        const types = { html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf' };
+        let contents;
+        try { contents = await readFile(new URL(`./dist/${file}`, import.meta.url)); }
+        catch (error) { if (error.code === 'ENOENT') return json(res, 404, { error: 'Not found' }); throw error; }
+        res.setHeader('Content-Type', types[extension] || 'application/octet-stream');
+        return res.end(contents);
       }
       await codex.ready;
       await history.ready;
@@ -152,7 +148,10 @@ export function createChatServer(codex, { historyPath } = {}) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const codex = new Codex();
-  const server = createChatServer(codex, { historyPath: fileURLToPath(new URL('./.data/history.json', import.meta.url)) });
+  const server = createChatServer(codex, {
+    historyPath: fileURLToPath(new URL('./.data/history.json', import.meta.url)),
+    allowedOrigins: process.env.DEV_ORIGINS?.split(',') || [],
+  });
   const port = Number(process.env.PORT || 8087);
   server.listen(port, '127.0.0.1', () => console.log(`Codex Chat: http://127.0.0.1:${port}`));
   server.on('error', error => { console.error(error.message); codex.close(); process.exitCode = 1; });

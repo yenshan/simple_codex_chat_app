@@ -4,7 +4,7 @@ Codex app-server を使う、ローカル向けのシンプルな日本語 Web �
 
 ## 起動
 
-Node.js 22 以上と Codex CLI が必要です。Codex CLI のログイン情報・プロバイダー設定を利用します。
+Node.js 22.12 以上と Codex CLI が必要です。Codex CLI のログイン情報・プロバイダー設定を利用します。
 
 ```sh
 git clone https://github.com/yenshan/simple_codex_chat_app.git
@@ -14,7 +14,7 @@ npm ci
 npm start
 ```
 
-http://127.0.0.1:8087 を開きます。ビルドは不要です。
+http://127.0.0.1:8087 を開きます。`npm start` は画面をビルドしてからサーバーを起動します。
 すでに Codex にログイン済みなら `codex login` は不要です。
 
 ```sh
@@ -22,6 +22,8 @@ PORT=3000 npm start
 CODEX_BIN=/absolute/path/to/codex npm start
 npm test
 ```
+
+開発中は `npm run dev` を実行し、http://127.0.0.1:5173 を開きます。Vite が画面を更新し、API リクエストをローカルの Node サーバーへ転送します。`npm run build` だけを実行すると `dist/` に配信用ファイルを生成できます。
 
 ## 機能
 
@@ -36,7 +38,9 @@ npm test
 
 ## 構成
 
-`server.js` がローカル HTTP サーバーを提供し、`codex.js` が `codex app-server` を子プロセスとして起動します。JSONL の initialize → initialized → thread/start → turn/start で通信し、ブラウザには fetch の NDJSON ストリームで回答を渡します。API キーやログイントークンをブラウザへ渡しません。
+画面は React コンポーネントで構成し、Vite でビルドします。`src/App.jsx` が会話状態と操作を管理し、`src/components/` がサイドバー・会話・入力欄を描画します。`src/api.js` に API 通信、`src/markdown.js` に Markdown と数式の変換をまとめています。
+
+`server.js` がビルド済みの画面とローカル HTTP API を提供し、`codex.js` が `codex app-server` を子プロセスとして起動します。JSONL の initialize → initialized → thread/start → turn/start で通信し、ブラウザには fetch の NDJSON ストリームで回答を渡します。API キーやログイントークンをブラウザへ渡しません。
 
 会話の一覧・メッセージは `.data/history.json` に保存し、Codex の永続スレッドと紐付けます。ページの再読み込み・サーバー再起動後も履歴を開き、続きを送信できます。保存した履歴はこのローカルアプリのブラウザ間で共有されます。生成中は会話の切り替えを無効にします。以前のバージョンで作成した一時会話は復元できません。モデル一覧はアカウントと Codex 設定に依存します。
 

@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { Marked } from 'marked';
 import createDOMPurify from 'dompurify';
 import katex from 'katex';
-import { renderMarkdown } from '../public/markdown.js';
+import { renderMarkdown } from '../src/markdown.js';
 
 const window = new JSDOM('').window;
 const purifier = createDOMPurify(window);

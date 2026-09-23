@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createChatServer } from '../server.js';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -43,12 +43,17 @@ async function fixture(t, options) {
   const { sessionId } = await (await post('/api/reset', {})).json();
   return { codex, base, post, sessionId };
 }
-test('serves the local math renderer, stylesheet and font', async t => {
+test('serves the built React app and assets', async t => {
   const { base } = await fixture(t);
+  const page = await fetch(base + '/');
+  assert.equal(page.status, 200);
+  assert.match(page.headers.get('content-type'), /text\/html/);
+  assert.match(await page.text(), /id="root"/);
+  const assets = await readdir(new URL('../dist/assets/', import.meta.url));
   for (const [path, type] of [
-    ['/vendor/katex.mjs', 'text/javascript'],
-    ['/vendor/katex.min.css', 'text/css'],
-    ['/vendor/fonts/KaTeX_Main-Regular.woff2', 'font/woff2'],
+    [`/assets/${assets.find(file => file.endsWith('.js'))}`, 'text/javascript'],
+    [`/assets/${assets.find(file => file.endsWith('.css'))}`, 'text/css'],
+    [`/assets/${assets.find(file => file.endsWith('.woff2'))}`, 'font/woff2'],
   ]) {
     const response = await fetch(base + path);
     assert.equal(response.status, 200, path);
@@ -90,6 +95,17 @@ test('validates models, sessions, and cross-origin requests', async t => {
   const { base, post, sessionId } = await fixture(t);
   assert.equal((await post('/api/chat', { text: 'hello', model: 'invalid' }, sessionId)).status, 400);
   assert.equal((await post('/api/chat', { text: 'hello', model: 'first' }, 'unknown')).status, 400);
+  assert.equal((await fetch(base + '/api/bootstrap', { headers: { Origin: 'https://example.com' } })).status, 403);
+});
+test('opens history from an allowed local development origin', async t => {
+  const { base, sessionId } = await fixture(t, { allowedOrigins: ['http://localhost:5173'] });
+  const response = await fetch(base + '/api/open', {
+    method: 'POST',
+    headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+    body: '{}',
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).sessionId, sessionId);
   assert.equal((await fetch(base + '/api/bootstrap', { headers: { Origin: 'https://example.com' } })).status, 403);
 });
 test('isolates conversations between browser sessions', async t => {
