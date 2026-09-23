@@ -1,12 +1,13 @@
-import { marked } from '/vendor/marked.js';
+import { Marked } from '/vendor/marked.js';
 import DOMPurify from '/vendor/purify.js';
+import katex from '/vendor/katex.mjs';
 import { renderMarkdown } from './markdown.js';
 const $ = selector => document.querySelector(selector);
 function renderText(content, text, role = 'assistant') {
   content.dataset.raw = text;
   if (role === 'user') content.textContent = text;
   else {
-    content.innerHTML = renderMarkdown(text, marked, DOMPurify);
+    content.innerHTML = renderMarkdown(text, Marked, DOMPurify, katex);
     content.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
     content.querySelectorAll('input').forEach(input => { input.type = 'checkbox'; input.disabled = true; });
   }

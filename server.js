@@ -13,15 +13,19 @@ export function createChatServer(codex, { historyPath } = {}) {
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'");
     const host = req.headers.host;
     if (!host || !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) || (req.headers.origin && req.headers.origin !== `http://${host}`)) return json(res, 403, { error: 'Forbidden origin' });
     try {
       const path = new URL(req.url, `http://${host}`).pathname;
-      const vendors = { '/vendor/marked.js': './node_modules/marked/lib/marked.esm.js', '/vendor/purify.js': './node_modules/dompurify/dist/purify.es.mjs' };
+      const vendors = { '/vendor/marked.js': './node_modules/marked/lib/marked.esm.js', '/vendor/purify.js': './node_modules/dompurify/dist/purify.es.mjs', '/vendor/katex.mjs': './node_modules/katex/dist/katex.mjs', '/vendor/katex.min.css': './node_modules/katex/dist/katex.min.css' };
       if (req.method === 'GET' && vendors[path]) {
-        res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        res.setHeader('Content-Type', path.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
         return res.end(await readFile(new URL(vendors[path], import.meta.url)));
+      }
+      if (req.method === 'GET' && /^\/vendor\/fonts\/KaTeX_[\w-]+\.woff2$/.test(path)) {
+        res.setHeader('Content-Type', 'font/woff2');
+        return res.end(await readFile(new URL(`./node_modules/katex/dist/fonts/${path.split('/').at(-1)}`, import.meta.url)));
       }
       if (req.method === 'GET' && ['/', '/app.js', '/markdown.js', '/style.css'].includes(path)) {
         const file = path === '/' ? 'index.html' : path.slice(1);

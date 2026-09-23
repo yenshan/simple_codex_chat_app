@@ -43,6 +43,19 @@ async function fixture(t, options) {
   const { sessionId } = await (await post('/api/reset', {})).json();
   return { codex, base, post, sessionId };
 }
+test('serves the local math renderer, stylesheet and font', async t => {
+  const { base } = await fixture(t);
+  for (const [path, type] of [
+    ['/vendor/katex.mjs', 'text/javascript'],
+    ['/vendor/katex.min.css', 'text/css'],
+    ['/vendor/fonts/KaTeX_Main-Regular.woff2', 'font/woff2'],
+  ]) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get('content-type'), new RegExp(type));
+    assert.ok((await response.arrayBuffer()).byteLength > 0);
+  }
+});
 test('streams final text and changes model within the same thread', async t => {
   const { codex, post, sessionId } = await fixture(t);
   for (const model of ['first', 'second']) {
