@@ -13,6 +13,17 @@ class FakeCodex extends EventEmitter {
   async request(method, params) {
     this.calls.push({ method, params });
     if (method === 'account/read') return { account: { type: 'chatgpt' } };
+    if (method === 'account/rateLimits/read') return {
+      rateLimitsByLimitId: {
+        codex: {
+          primary: { usedPercent: 25, windowDurationMins: 300, resetsAt: 1730947200 },
+          secondary: { usedPercent: 40, windowDurationMins: 10080, resetsAt: 1731552000 },
+        },
+        codex_other: {
+          primary: { usedPercent: 90, windowDurationMins: 300 },
+        },
+      },
+    };
     if (method === 'model/list') return { data: [
       { model: 'first', defaultReasoningEffort: 'low', supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'high' }] },
       { model: 'second', defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }] },
@@ -61,6 +72,16 @@ test('serves the built React app and assets', async t => {
     assert.match(response.headers.get('content-type'), new RegExp(type));
     assert.ok((await response.arrayBuffer()).byteLength > 0);
   }
+});
+test('shows remaining five-hour and weekly Codex limits', async t => {
+  const { base, codex } = await fixture(t);
+  const response = await fetch(base + '/api/usage');
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    fiveHour: { remainingPercent: 75, resetsAt: 1730947200 },
+    weekly: { remainingPercent: 60, resetsAt: 1731552000 },
+  });
+  assert.equal(codex.calls.filter(call => call.method === 'account/rateLimits/read').length, 1);
 });
 test('streams final text and changes model within the same thread', async t => {
   const { codex, post, sessionId } = await fixture(t);

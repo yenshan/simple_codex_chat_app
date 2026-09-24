@@ -1,10 +1,34 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+function UsageWindow({ label, quota }) {
+  const value = quota?.remainingPercent;
+  return (
+    <div className="usage-window">
+      <div className="usage-window-label">
+        <span>{label}</span>
+        <strong>{value == null ? "—" : `${value}%`}</strong>
+      </div>
+      <div
+        className="usage-meter"
+        role="progressbar"
+        aria-label={`${label} 残量`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={value ?? undefined}
+        aria-valuetext={value == null ? "取得できません" : `${value}%`}
+      >
+        <span style={{ width: `${value ?? 0}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export default function Sidebar({
   sidebarRef,
   authenticated,
   connected,
+  usage,
   conversations,
   sessionId,
   disabled,
@@ -63,6 +87,11 @@ export default function Sidebar({
                 : "○ 接続の準備が必要です"
               : "○ 接続できません"}
         </span>
+        <section className="usage-panel" aria-label="Codex 使用量">
+          <div className="usage-heading">Codex 使用量 · 残り</div>
+          <UsageWindow label="5h limit" quota={usage?.fiveHour} />
+          <UsageWindow label="weekly limit" quota={usage?.weekly} />
+        </section>
       </div>
       <button
         id="new-chat"

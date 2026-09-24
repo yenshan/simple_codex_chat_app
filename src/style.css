@@ -380,6 +380,47 @@ h1 {
   flex-direction: column;
   padding: 18px 14px 16px;
 }
+.usage-panel {
+  width: 100%;
+  flex: none;
+  padding: 10px;
+  border: 1px solid #dce3d6;
+  border-radius: 10px;
+  background: #fcfdfa;
+}
+.usage-heading {
+  margin-bottom: 10px;
+  color: #566b58;
+  font-size: 11px;
+  font-weight: 600;
+}
+.usage-window + .usage-window {
+  margin-top: 9px;
+}
+.usage-window-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  color: #627265;
+  font-size: 10px;
+}
+.usage-window-label strong {
+  color: #304f39;
+  font-weight: 600;
+}
+.usage-meter {
+  height: 5px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #dfe8dc;
+}
+.usage-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #5b946b;
+}
 .sidebar-heading {
   font-size: 12px;
   font-weight: 600;
@@ -602,7 +643,7 @@ h1 {
   flex: none;
   flex-direction: column;
   align-items: stretch;
-  gap: 18px;
+  gap: 10px;
   margin: 0 0 24px;
   padding: 0 10px 24px;
   border-bottom: 1px solid #dce3d6;

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Codex } from './codex.js';
 import { History } from './history.js';
+import { summarizeRateLimits } from './usage.js';
 
 export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {}) {
   const history = new History(historyPath);
@@ -30,6 +31,10 @@ export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {
       }
       await codex.ready;
       await history.ready;
+      if (path === '/api/usage' && req.method === 'GET') {
+        const limits = await codex.request('account/rateLimits/read');
+        return json(res, 200, summarizeRateLimits(limits));
+      }
       if (path === '/api/history' && req.method === 'GET') return json(res, 200, { conversations: [...sessions].filter(([, s]) => s.messages.length).map(([id, s]) => ({ id, title: s.title, updatedAt: s.updatedAt, busy: s.busy })).sort((a, b) => b.updatedAt - a.updatedAt) });
       if (path === '/api/bootstrap' && req.method === 'GET') {
         const account = await codex.request('account/read', { refreshToken: false });

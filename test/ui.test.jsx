@@ -43,6 +43,10 @@ test("restores history, streams Markdown and math, and switches conversations", 
           { id: "saved", title: "以前の会話", updatedAt: Date.now() },
         ],
       },
+      "/api/usage": {
+        fiveHour: { remainingPercent: 75 },
+        weekly: { remainingPercent: 60 },
+      },
       "/api/open": {
         sessionId: "saved",
         model: "test",
@@ -79,6 +83,16 @@ test("restores history, streams Markdown and math, and switches conversations", 
   vi.stubGlobal("fetch", fetchMock);
   render(<App />);
   expect(await screen.findByText("保存された見出し")).toBeTruthy();
+  expect(await screen.findByText("75%")).toBeTruthy();
+  expect(screen.getByText("60%")).toBeTruthy();
+  expect(document.querySelector("#connection").nextElementSibling).toBe(
+    screen.getByRole("region", { name: "Codex 使用量" }),
+  );
+  expect(
+    screen
+      .getByRole("progressbar", { name: "5h limit 残量" })
+      .getAttribute("aria-valuenow"),
+  ).toBe("75");
   expect(
     document.querySelector("#conversation > .conversation-content #messages"),
   ).toBeTruthy();
@@ -159,6 +173,7 @@ test("starts with the sidebar closed on a narrow screen", async () => {
         ],
       },
       "/api/history": { conversations: [] },
+      "/api/usage": { fiveHour: null, weekly: null },
       "/api/reset": { sessionId: "new" },
     }[path];
     return Response.json(data);
@@ -205,6 +220,8 @@ test("switches directly between saved conversations", async () => {
           },
         ],
       });
+    if (path === "/api/usage")
+      return Response.json({ fiveHour: null, weekly: null });
     if (path === "/api/open")
       return Response.json({
         sessionId: options.headers["X-Session-Id"],
@@ -263,6 +280,8 @@ test("deletes the active history item from its menu after confirmation", async (
         ],
       });
     if (path === "/api/history") return Response.json({ conversations });
+    if (path === "/api/usage")
+      return Response.json({ fiveHour: null, weekly: null });
     if (path === "/api/open")
       return Response.json({
         sessionId: "saved",

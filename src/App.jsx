@@ -40,6 +40,7 @@ export default function App() {
   const [effort, setEffort] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [conversations, setConversations] = useState([]);
+  const [usage, setUsage] = useState(null);
   const [messages, setMessages] = useState([]);
   const [prompt, setPrompt] = useState("");
   const [activity, setActivity] = useState("");
@@ -64,6 +65,13 @@ export default function App() {
     const data = await getJson("/api/history");
     setConversations(data.conversations);
     return data.conversations;
+  }
+  async function refreshUsage() {
+    try {
+      setUsage(await getJson("/api/usage"));
+    } catch {
+      setUsage(null);
+    }
   }
   async function openConversation(id, availableModels = models) {
     if (busyRef.current || switchingRef.current) return;
@@ -154,6 +162,11 @@ export default function App() {
       setSwitching(false);
     }
   }
+  useEffect(() => {
+    refreshUsage();
+    const interval = setInterval(refreshUsage, 60_000);
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -296,6 +309,7 @@ export default function App() {
       setStopDisabled(false);
       inputRef.current?.focus();
       refreshHistory().catch((cause) => setError(cause.message));
+      refreshUsage();
     }
   }
   async function stop() {
@@ -314,6 +328,7 @@ export default function App() {
         sidebarRef={sidebarRef}
         authenticated={authenticated}
         connected={connected}
+        usage={usage}
         conversations={conversations}
         sessionId={sessionId}
         disabled={busy || switching}
