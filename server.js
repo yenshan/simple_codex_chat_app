@@ -42,7 +42,7 @@ export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {
         models = list.filter(m => !m.hidden);
         return json(res, 200, { models, authenticated: Boolean(account.account) || !account.requiresOpenaiAuth });
       }
-      if (req.method !== 'POST' || !['/api/chat', '/api/stop', '/api/reset', '/api/open'].includes(path)) return json(res, 404, { error: 'Not found' });
+      if (req.method !== 'POST' || !['/api/chat', '/api/stop', '/api/reset', '/api/open', '/api/delete'].includes(path)) return json(res, 404, { error: 'Not found' });
       if (!req.headers['content-type']?.startsWith('application/json')) return json(res, 415, { error: 'JSON required' });
       let raw = '';
       for await (const chunk of req) {
@@ -61,6 +61,15 @@ export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {
         return json(res, 200, { sessionId: id });
       }
       if (!session) return json(res, 400, { error: 'ページを再読み込みしてください。' });
+      if (path === '/api/delete') {
+        if (session.busy) return json(res, 409, { error: '生成を停止してから削除してください。' });
+        session.busy = true;
+        try { if (session.threadId) await codex.request('thread/delete', { threadId: session.threadId }); }
+        catch (error) { session.busy = false; throw error; }
+        sessions.delete(token);
+        await history.save();
+        return json(res, 200, {});
+      }
       if (path === '/api/open') {
         if (session.busy) return json(res, 409, { error: 'この会話は回答を生成中です。少し待ってから開いてください。' });
         return json(res, 200, { sessionId: token, messages: session.messages, model: session.model, effort: session.effort });

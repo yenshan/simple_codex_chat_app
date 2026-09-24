@@ -91,6 +91,29 @@ test('interrupts active turns and rejects concurrent sends', async t => {
   assert.match(await (await stream).text(), /interrupted/);
   assert.equal((await post('/api/reset', {}, sessionId)).status, 200);
 });
+test('deletes a saved conversation and its Codex thread', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-chat-delete-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const options = { historyPath: join(directory, 'history.json') };
+  const { codex, base, post, sessionId } = await fixture(t, options);
+  await (await post('/api/chat', { text: '削除する会話', model: 'first' }, sessionId)).text();
+  assert.equal((await post('/api/delete', {}, sessionId)).status, 200);
+  assert.equal(codex.calls.find(call => call.method === 'thread/delete').params.threadId, 'thread-1');
+  assert.equal((await (await fetch(base + '/api/history')).json()).conversations.length, 0);
+  assert.equal((await post('/api/open', {}, sessionId)).status, 400);
+  const restored = await fixture(t, options);
+  assert.equal((await (await fetch(restored.base + '/api/history')).json()).conversations.length, 0);
+});
+test('rejects deletion while a conversation is generating', async t => {
+  const { codex, post, sessionId } = await fixture(t);
+  const stream = post('/api/chat', { text: 'wait', model: 'first' }, sessionId);
+  while (!codex.calls.some(call => call.method === 'turn/start')) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal((await post('/api/delete', {}, sessionId)).status, 409);
+  assert.equal(codex.calls.some(call => call.method === 'thread/delete'), false);
+  await post('/api/stop', {}, sessionId);
+  await (await stream).text();
+  assert.equal((await post('/api/delete', {}, sessionId)).status, 200);
+});
 test('validates models, sessions, and cross-origin requests', async t => {
   const { base, post, sessionId } = await fixture(t);
   assert.equal((await post('/api/chat', { text: 'hello', model: 'invalid' }, sessionId)).status, 400);

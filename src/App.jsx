@@ -122,6 +122,38 @@ export default function App() {
       setSwitching(false);
     }
   }
+  async function deleteConversation(chat) {
+    if (busyRef.current || switchingRef.current) return;
+    if (
+      !window.confirm(
+        `「${chat.title}」を削除しますか？この操作は取り消せません。`,
+      )
+    )
+      return;
+    switchingRef.current = true;
+    setSwitching(true);
+    try {
+      await post("/api/delete", {}, chat.id);
+      if (chat.id === sessionId) {
+        setSessionId("");
+        savePreference("codex-chat-active", "");
+        setMessages([]);
+        setPrompt("");
+        setActivity("");
+        const data = await (await post("/api/reset", {}, "")).json();
+        setSessionId(data.sessionId);
+        savePreference("codex-chat-active", data.sessionId);
+        followOutput.current = true;
+      }
+      await refreshHistory();
+      setError("");
+    } catch (cause) {
+      setError(cause.message);
+    } finally {
+      switchingRef.current = false;
+      setSwitching(false);
+    }
+  }
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -287,6 +319,7 @@ export default function App() {
         busy={busy}
         onNewChat={newChat}
         onOpen={openConversation}
+        onDelete={deleteConversation}
       />
       <button
         id="sidebar-toggle"

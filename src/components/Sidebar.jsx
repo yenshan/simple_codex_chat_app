@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const effortLabels = {
   none: "なし",
@@ -26,7 +27,38 @@ export default function Sidebar({
   busy,
   onNewChat,
   onOpen,
+  onDelete,
 }) {
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+  useEffect(() => {
+    if (!openMenu) return;
+    const closeOutside = (event) => {
+      if (
+        !menuRef.current?.contains(event.target) &&
+        !triggerRef.current?.contains(event.target)
+      )
+        setOpenMenu(null);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpenMenu(null);
+        triggerRef.current?.focus();
+      }
+    };
+    const close = () => setOpenMenu(null);
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenu]);
   const selected = models.find((item) => item.model === model);
   const efforts = selected?.supportedReasoningEfforts || [];
   return (
@@ -102,27 +134,83 @@ export default function Sidebar({
           <p className="history-empty">まだ会話はありません</p>
         )}
         {conversations.map((chat) => (
-          <button
+          <div
             key={chat.id}
-            className="history-item"
-            type="button"
-            title={chat.title}
-            aria-current={chat.id === sessionId ? "page" : "false"}
-            disabled={disabled || busy || chat.busy}
-            onClick={() => onOpen(chat.id)}
+            className={`history-entry${chat.id === sessionId ? " current" : ""}`}
           >
-            <span>{chat.title}</span>
-            <small>
-              {new Date(chat.updatedAt).toLocaleString("ja-JP", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </small>
-          </button>
+            <button
+              className="history-item"
+              type="button"
+              title={chat.title}
+              aria-current={chat.id === sessionId ? "page" : "false"}
+              disabled={disabled || busy || chat.busy}
+              onClick={() => {
+                setOpenMenu(null);
+                onOpen(chat.id);
+              }}
+            >
+              <span>{chat.title}</span>
+              <small>
+                {new Date(chat.updatedAt).toLocaleString("ja-JP", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </small>
+            </button>
+            <button
+              className="history-menu-trigger"
+              type="button"
+              ref={openMenu?.id === chat.id ? triggerRef : null}
+              aria-label={`${chat.title}のメニュー`}
+              aria-haspopup="menu"
+              aria-expanded={openMenu?.id === chat.id}
+              disabled={disabled || busy || chat.busy}
+              onClick={(event) => {
+                if (openMenu?.id === chat.id) return setOpenMenu(null);
+                const rect = event.currentTarget.getBoundingClientRect();
+                setOpenMenu({
+                  id: chat.id,
+                  chat,
+                  left: Math.max(
+                    8,
+                    Math.min(rect.right - 112, window.innerWidth - 120),
+                  ),
+                  top:
+                    rect.bottom + 48 > window.innerHeight
+                      ? rect.top - 48
+                      : rect.bottom + 4,
+                });
+              }}
+            >
+              …
+            </button>
+          </div>
         ))}
       </nav>
+      {openMenu &&
+        createPortal(
+          <div
+            className="history-menu"
+            role="menu"
+            ref={menuRef}
+            style={{ left: openMenu.left, top: openMenu.top }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              autoFocus
+              onClick={() => {
+                setOpenMenu(null);
+                onDelete(openMenu.chat);
+              }}
+            >
+              削除
+            </button>
+          </div>,
+          document.body,
+        )}
       <p className="history-note">会話はこの端末に保存されます</p>
     </aside>
   );
