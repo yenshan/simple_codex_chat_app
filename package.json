@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "npm run build && node server.js",
-    "dev": "concurrently -k \"DEV_ORIGINS=http://127.0.0.1:5173,http://localhost:5173 node server.js\" \"vite\"",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "format": "prettier --write src vite.config.js test/ui.test.jsx",
     "test": "npm run build && node --test test/*.test.js && vitest run test/ui.test.jsx"
@@ -23,7 +23,6 @@
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^6.1.1",
-    "concurrently": "^10.0.5",
     "jsdom": "^27.0.1",
     "prettier": "^3.9.9",
     "vite": "^8.3.0",

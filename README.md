@@ -23,7 +23,7 @@ CODEX_BIN=/absolute/path/to/codex npm start
 npm test
 ```
 
-開発中は `npm run dev` を実行し、http://127.0.0.1:5173 を開きます。Vite が画面を更新し、API リクエストをローカルの Node サーバーへ転送します。`npm run build` だけを実行すると `dist/` に配信用ファイルを生成できます。
+開発中は `npm run dev` を実行します。Codex app-server とローカル API の準備ができてから Vite を起動し、http://localhost:5173 をブラウザで自動的に開きます。Vite が画面を更新し、API リクエストを Node サーバーへ転送します。`Ctrl+C` でこのコマンドが起動したプロセスを終了します。`npm run build` だけを実行すると `dist/` に配信用ファイルを生成できます。
 
 ## 機能
 

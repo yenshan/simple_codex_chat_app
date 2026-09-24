@@ -157,17 +157,43 @@ export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {
       else res.end();
     }
   });
+  server.ready = Promise.all([codex.ready, history.ready]);
   return server;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const codex = new Codex();
   const server = createChatServer(codex, {
-    historyPath: fileURLToPath(new URL('./.data/history.json', import.meta.url)),
+    historyPath: process.env.HISTORY_PATH || fileURLToPath(new URL('./.data/history.json', import.meta.url)),
     allowedOrigins: process.env.DEV_ORIGINS?.split(',') || [],
   });
   const port = Number(process.env.PORT || 8087);
-  server.listen(port, '127.0.0.1', () => console.log(`Codex Chat: http://127.0.0.1:${port}`));
-  server.on('error', error => { console.error(error.message); codex.close(); process.exitCode = 1; });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { codex.close(); server.close(); server.closeAllConnections(); });
+  let stopping = false;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    codex.close();
+    if (server.listening) { server.close(); server.closeAllConnections(); }
+  };
+  server.ready.then(() => {
+    if (stopping) return;
+    console.log('Codex app-server: 起動しました');
+    server.listen(port, '127.0.0.1', () => {
+      console.log(`Codex Chat: http://127.0.0.1:${port}`);
+      process.send?.({ type: 'ready' });
+    });
+  }).catch(error => {
+    if (stopping) return;
+    console.error(`Codex Chatを起動できません: ${error.message}`);
+    process.exitCode = 1;
+    stop();
+  });
+  server.on('error', error => { console.error(error.message); process.exitCode = 1; stop(); });
+  codex.on('disconnect', error => {
+    if (stopping) return;
+    console.error(error.message);
+    process.exitCode = 1;
+    stop();
+  });
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, stop);
 }
