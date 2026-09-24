@@ -256,7 +256,13 @@ export default function App() {
             if (index < 0)
               return [
                 ...previous,
-                { id: event.id, role: "assistant", text: value, label },
+                {
+                  id: event.id,
+                  role: "assistant",
+                  text: value,
+                  label,
+                  effort: selectedEffort,
+                },
               ];
             return previous.map((item, position) =>
               position === index ? { ...item, text: value } : item,
@@ -308,11 +314,6 @@ export default function App() {
         sidebarRef={sidebarRef}
         authenticated={authenticated}
         connected={connected}
-        models={models}
-        model={model}
-        effort={effort}
-        onModelChange={changeModel}
-        onEffortChange={changeEffort}
         conversations={conversations}
         sessionId={sessionId}
         disabled={busy || switching}
@@ -350,6 +351,11 @@ export default function App() {
           busy={busy}
           stopDisabled={stopDisabled}
           disabled={!authenticated || switching}
+          models={models}
+          model={model}
+          effort={effort}
+          onModelChange={changeModel}
+          onEffortChange={changeEffort}
           sendDisabled={
             !authenticated ||
             busy ||

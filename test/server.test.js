@@ -20,11 +20,12 @@ class FakeCodex extends EventEmitter {
     if (method === 'thread/start') return { thread: { id: `thread-${++this.counter}` } };
     if (method === 'turn/start') {
       const turn = { id: `turn-${++this.counter}` };
+      const itemId = `item-${turn.id}`;
       const emit = (method, extra) => this.emit('notification', { method, params: { threadId: params.threadId, ...extra } });
       emit('turn/started', { turn });
       if (params.input[0].text !== 'wait') setTimeout(() => {
-        emit('item/agentMessage/delta', { itemId: 'item', delta: 'こんにちは' });
-        emit('item/completed', { item: { id: 'item', type: 'agentMessage', text: 'こんにちは！' } });
+        emit('item/agentMessage/delta', { itemId, delta: 'こんにちは' });
+        emit('item/completed', { item: { id: itemId, type: 'agentMessage', text: 'こんにちは！' } });
         emit('turn/completed', { turn: { ...turn, status: 'completed' } });
       }, 5);
       return { turn };
@@ -151,9 +152,12 @@ test('keeps history after new chat and resumes a saved thread after server resta
   const restored = await fixture(t, options);
   const opened = await (await restored.post('/api/open', {}, original.sessionId)).json();
   assert.deepEqual(opened.messages.map(m => m.text), ['保存する会話', 'こんにちは！']);
+  assert.equal(opened.messages.find(m => m.role === 'assistant').effort, 'high');
   assert.equal(opened.effort, 'high');
   await (await restored.post('/api/chat', { text: '続きを話す', model: 'second' }, original.sessionId)).text();
   assert.equal(restored.codex.calls.filter(c => c.method === 'thread/start').length, 0);
   assert.equal(restored.codex.calls.find(c => c.method === 'thread/resume').params.threadId, 'thread-1');
-  assert.equal((await (await restored.post('/api/open', {}, original.sessionId)).json()).messages.filter(m => m.role === 'user').length, 2);
+  const continued = await (await restored.post('/api/open', {}, original.sessionId)).json();
+  assert.equal(continued.messages.filter(m => m.role === 'user').length, 2);
+  assert.deepEqual(continued.messages.filter(m => m.role === 'assistant').map(m => m.effort), ['high', 'medium']);
 });

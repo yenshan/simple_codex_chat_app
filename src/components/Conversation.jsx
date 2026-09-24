@@ -3,6 +3,7 @@ import { Marked } from "marked";
 import DOMPurify from "dompurify";
 import katex from "katex";
 import { renderMarkdown } from "../markdown.js";
+import { effortLabels } from "../effort.js";
 
 function Message({ item, onError }) {
   const [copied, setCopied] = useState(false);
@@ -31,7 +32,9 @@ function Message({ item, onError }) {
   return (
     <article className={`message ${item.role}`}>
       <div className="who">
-        {assistant ? `Codex · ${item.label}` : "あなた"}
+        {assistant
+          ? `Codex · ${item.label} · 推論レベル: ${item.effort ? effortLabels[item.effort] || item.effort : "記録なし"}`
+          : "あなた"}
       </div>
       {assistant ? (
         <div
@@ -61,56 +64,60 @@ export default function Conversation({
 }) {
   return (
     <section id="conversation" aria-label="会話" ref={viewRef}>
-      {!messages.length && (
-        <div id="welcome">
-          <div className="eyebrow">A LITTLE SPACE FOR BIG IDEAS</div>
-          <h1>今日は、何を話しましょう。</h1>
-          <p>
-            疑問を解いたり、アイデアを広げたり。
-            <br />
-            好きなモデルで、気軽に話しかけてください。
-          </p>
-          <div className="suggestions">
-            <button
-              type="button"
-              onClick={() =>
-                onSuggestion(
-                  "新しいWebアプリのアイデアを一緒に考えてください。",
-                )
-              }
-            >
-              <span>✦</span> アイデアを考える <b>↗</b>
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onSuggestion(
-                  "わかりやすい文章を書くためのコツを教えてください。",
-                )
-              }
-            >
-              <span>≋</span> 文章を磨く <b>↗</b>
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onSuggestion("プログラミングの学習計画を一緒に考えてください。")
-              }
-            >
-              <span>⌘</span> コードを学ぶ <b>↗</b>
-            </button>
+      <div className="conversation-content">
+        {!messages.length && (
+          <div id="welcome">
+            <div className="eyebrow">A LITTLE SPACE FOR BIG IDEAS</div>
+            <h1>今日は、何を話しましょう。</h1>
+            <p>
+              疑問を解いたり、アイデアを広げたり。
+              <br />
+              好きなモデルで、気軽に話しかけてください。
+            </p>
+            <div className="suggestions">
+              <button
+                type="button"
+                onClick={() =>
+                  onSuggestion(
+                    "新しいWebアプリのアイデアを一緒に考えてください。",
+                  )
+                }
+              >
+                <span>✦</span> アイデアを考える <b>↗</b>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onSuggestion(
+                    "わかりやすい文章を書くためのコツを教えてください。",
+                  )
+                }
+              >
+                <span>≋</span> 文章を磨く <b>↗</b>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onSuggestion(
+                    "プログラミングの学習計画を一緒に考えてください。",
+                  )
+                }
+              >
+                <span>⌘</span> コードを学ぶ <b>↗</b>
+              </button>
+            </div>
           </div>
+        )}
+        <div
+          id="messages"
+          role="log"
+          aria-label="チャットメッセージ"
+          aria-live="polite"
+        >
+          {messages.map((item) => (
+            <Message key={item.id} item={item} onError={onError} />
+          ))}
         </div>
-      )}
-      <div
-        id="messages"
-        role="log"
-        aria-label="チャットメッセージ"
-        aria-live="polite"
-      >
-        {messages.map((item) => (
-          <Message key={item.id} item={item} onError={onError} />
-        ))}
       </div>
     </section>
   );

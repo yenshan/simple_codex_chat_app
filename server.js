@@ -106,7 +106,7 @@ export function createChatServer(codex, { historyPath, allowedOrigins = [] } = {
         if (method === 'item/agentMessage/delta' || (method === 'item/completed' && p.item.type === 'agentMessage')) {
           const id = p.itemId || p.item.id;
           let message = session.messages.find(m => m.id === id);
-          if (!message) { message = { id, role: 'assistant', text: '', label }; session.messages.push(message); }
+          if (!message) { message = { id, role: 'assistant', text: '', label, effort }; session.messages.push(message); }
           message.text = method === 'item/agentMessage/delta' ? message.text + p.delta : p.item.text;
           session.updatedAt = Date.now();
         }

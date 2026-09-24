@@ -31,7 +31,10 @@ test("restores history, streams Markdown and math, and switches conversations", 
             model: "test",
             displayName: "Test",
             defaultReasoningEffort: "low",
-            supportedReasoningEfforts: [{ reasoningEffort: "low" }],
+            supportedReasoningEfforts: [
+              { reasoningEffort: "low" },
+              { reasoningEffort: "high" },
+            ],
           },
         ],
       },
@@ -50,6 +53,7 @@ test("restores history, streams Markdown and math, and switches conversations", 
             role: "assistant",
             text: "# 保存された見出し\n\n$x^2$",
             label: "Test",
+            effort: "low",
           },
         ],
       },
@@ -75,6 +79,27 @@ test("restores history, streams Markdown and math, and switches conversations", 
   vi.stubGlobal("fetch", fetchMock);
   render(<App />);
   expect(await screen.findByText("保存された見出し")).toBeTruthy();
+  expect(
+    document.querySelector("#conversation > .conversation-content #messages"),
+  ).toBeTruthy();
+  expect(screen.getByText("Codex · Test · 推論レベル: 低")).toBeTruthy();
+  expect(document.querySelector("#composer #model")).toBeTruthy();
+  expect(document.querySelector("#composer #effort")).toBeTruthy();
+  expect(document.querySelector("#sidebar select")).toBeNull();
+  expect(screen.getByLabelText("メッセージ").tagName).toBe("INPUT");
+  const promptBox = screen.getByLabelText("メッセージ").closest(".prompt-box");
+  expect(promptBox.querySelector("select")).toBeNull();
+  expect(promptBox.parentElement.classList.contains("composer-input-row")).toBe(
+    true,
+  );
+  expect(
+    screen.getByRole("button", { name: "メッセージを送信" }).parentElement,
+  ).toBe(promptBox.parentElement);
+  expect(
+    promptBox.parentElement.nextElementSibling.classList.contains(
+      "composer-footer",
+    ),
+  ).toBe(true);
   expect(document.querySelector("#sidebar .brand")).toBeTruthy();
   expect(document.querySelector("#messages .katex")).toBeTruthy();
   const toggle = screen.getByRole("button", { name: "サイドバーを閉じる" });
@@ -85,6 +110,9 @@ test("restores history, streams Markdown and math, and switches conversations", 
   fireEvent.change(screen.getByLabelText("メッセージ"), {
     target: { value: "続けて" },
   });
+  fireEvent.change(screen.getByLabelText("推論レベル"), {
+    target: { value: "high" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "メッセージを送信" }));
   await waitFor(() =>
     expect(document.querySelector("#messages strong")?.textContent).toBe(
@@ -92,6 +120,7 @@ test("restores history, streams Markdown and math, and switches conversations", 
     ),
   );
   expect(document.querySelector("#messages .katex-display")).toBeTruthy();
+  expect(screen.getByText("Codex · Test · 推論レベル: 高")).toBeTruthy();
   expect(document.querySelector("#messages pre code")?.textContent.trim()).toBe(
     "const n = 1;",
   );
@@ -100,6 +129,10 @@ test("restores history, streams Markdown and math, and switches conversations", 
       "X-Session-Id"
     ],
   ).toBe("saved");
+  expect(
+    JSON.parse(calls.find((call) => call.path === "/api/chat").options.body)
+      .effort,
+  ).toBe("high");
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "＋ 新しい会話" }).disabled).toBe(
       false,
