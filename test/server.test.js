@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createChatServer } from '../server.js';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -119,12 +119,36 @@ test('deletes a saved conversation and its Codex thread', async t => {
   const options = { historyPath: join(directory, 'history.json') };
   const { codex, base, post, sessionId } = await fixture(t, options);
   await (await post('/api/chat', { text: '削除する会話', model: 'first' }, sessionId)).text();
+  const second = (await (await post('/api/reset', {}, sessionId)).json()).sessionId;
+  await (await post('/api/chat', { text: '残す会話', model: 'first' }, second)).text();
+  assert.deepEqual((await readdir(join(directory, 'history'))).sort(), [`${second}.json`, `${sessionId}.json`].sort());
   assert.equal((await post('/api/delete', {}, sessionId)).status, 200);
   assert.equal(codex.calls.find(call => call.method === 'thread/delete').params.threadId, 'thread-1');
-  assert.equal((await (await fetch(base + '/api/history')).json()).conversations.length, 0);
+  assert.deepEqual(await readdir(join(directory, 'history')), [`${second}.json`]);
+  assert.deepEqual((await (await fetch(base + '/api/history')).json()).conversations.map(item => item.id), [second]);
   assert.equal((await post('/api/open', {}, sessionId)).status, 400);
   const restored = await fixture(t, options);
-  assert.equal((await (await fetch(restored.base + '/api/history')).json()).conversations.length, 0);
+  assert.deepEqual((await (await fetch(restored.base + '/api/history')).json()).conversations.map(item => item.id), [second]);
+});
+test('migrates the combined history file without losing conversations', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-chat-migrate-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const historyPath = join(directory, 'history.json');
+  const legacy = [
+    ['old-1', { threadId: 'thread-old-1', messages: [{ id: 'one', role: 'user', text: '最初の会話' }], title: '最初の会話', updatedAt: 1, model: 'first', effort: 'low' }],
+    ['old-2', { threadId: 'thread-old-2', messages: [{ id: 'two', role: 'user', text: '次の会話' }], title: '次の会話', updatedAt: 2, model: 'first', effort: 'high' }],
+  ];
+  await writeFile(historyPath, JSON.stringify(legacy));
+  const { base, post } = await fixture(t, { historyPath });
+  assert.deepEqual((await (await fetch(base + '/api/history')).json()).conversations.map(item => item.id), ['old-2', 'old-1']);
+  assert.deepEqual((await readdir(join(directory, 'history'))).sort(), ['old-1.json', 'old-2.json']);
+  assert.deepEqual(JSON.parse(await readFile(join(directory, 'history', 'old-1.json'), 'utf8')).messages, legacy[0][1].messages);
+  const backup = (await readdir(directory)).find(name => name.startsWith('history.json.migrated-'));
+  assert.ok(backup);
+  assert.deepEqual(JSON.parse(await readFile(join(directory, backup), 'utf8')), legacy);
+  await post('/api/delete', {}, 'old-1');
+  const restored = await fixture(t, { historyPath });
+  assert.deepEqual((await (await fetch(restored.base + '/api/history')).json()).conversations.map(item => item.id), ['old-2']);
 });
 test('rejects deletion while a conversation is generating', async t => {
   const { codex, post, sessionId } = await fixture(t);
